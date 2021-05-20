@@ -36,6 +36,7 @@ public:
 	// flag variables
 	int draw_flag;
 	int load_flag;
+	int break_flag;
 	
 
 	// Line segment and dot related variables
@@ -43,10 +44,13 @@ public:
 	float dot_diameter;
 	Line* lineseg = NULL;
 	Dot* dot = NULL;
+	int dot_index;
 
 	/* WaterFall-related member functions */
 
 	void processOpenFileSelection(ofFileDialogResult openFileResult);
 	void initializeWaterLines(); // 2nd week portion.
-
+	int isOnScreen(int mode, int data);
+	void sortDot(Dot* dot);
+	void swapDot(Dot* dot, int n);
 };

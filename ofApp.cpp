@@ -32,7 +32,19 @@ void ofApp::draw() {
 	ofSetLineWidth(5);
 	if (draw_flag) {
 
-
+		for (int i = 0; i < num_of_line; i++)
+		{
+			ofDrawLine(lineseg[i].x1, lineseg[i].y1, lineseg[i].x2, lineseg[i].y2);
+		}
+		ofSetColor(0);
+		for (int i = 0; i < num_of_dot; i++)
+		{
+			if (i == dot_index)
+				ofSetColor(255, 0, 0, 255);
+			ofDrawCircle(dot[i].x1, dot[i].y1, 10);
+			if (i == dot_index)
+				ofSetColor(0);
+		}
 		/* COMSIL1-TODO 3 : Draw the line segment and dot in which water starts to flow in the screen.
 		 Note that after drawing line segment and dot, you have to make selected water start dot colored in red.
 		 */
@@ -51,24 +63,35 @@ void ofApp::keyPressed(int key) {
 		glReadBuffer(GL_FRONT);
 		ofSaveScreen("savedScreenshot_" + ofGetTimestampString() + ".png");
 	}
-	if (key == 'q') {
+	if (key == 'q' || key == 'Q') {
 		// Reset flags
 		draw_flag = 0;
 
 		// Free the dynamically allocated memory exits.
-
+		if (lineseg != NULL)
+		{
+			free(lineseg);
+			lineseg = NULL;
+		}
+		if (dot != NULL)
+		{
+			free(dot);
+			dot = NULL;
+		}
 		cout << "Dynamically allocated memory has been freed." << endl;
 
 		_Exit(0);
 	}
-	if (key == 'd') {
+	if (key == 'd' || key == 'D') {
 		if (!load_flag) return;
 
 		/* COMSIL1-TODO 2: This is draw control part.
 		You should draw only after when the key 'd' has been pressed.
 		*/
+		draw_flag = 1;
+		//draw();
 	}
-	if (key == 's') {
+	if (key == 's' || key == 'S') {
 		// 2nd week portion.
 	}
 	if (key == 'e') {
@@ -78,7 +101,7 @@ void ofApp::keyPressed(int key) {
 
 //--------------------------------------------------------------
 void ofApp::keyReleased(int key) {
-	if (key == 'l') {
+	if (key == 'l' || key == 'L') {
 		// Open the Open File Dialog
 		ofFileDialogResult openFileResult = ofSystemLoadDialog("Select a only txt for Waterfall");
 
@@ -97,12 +120,18 @@ void ofApp::keyReleased(int key) {
 	 */
 
 	if (key == OF_KEY_RIGHT) {
-
-		cout << "Selcted Dot Coordinate is (" << ", " << ")" << endl;
+		if (dot_index == num_of_dot-1)
+			dot_index = 0;
+		else
+			dot_index++;
+		cout << "Selcted Dot Coordinate is (" << dot[dot_index].x1 << ", " << dot[dot_index].y1 << ")" << endl;
 	}
 	if (key == OF_KEY_LEFT) {
-
-		cout << "Selcted Dot Coordinate is (" << ", " << ")" << endl;
+		if (dot_index == 0)
+			dot_index = num_of_dot - 1;
+		else
+			dot_index--;
+		cout << "Selcted Dot Coordinate is (" << dot[dot_index].x1 << ", " << dot[dot_index].y1 << ")" << endl;
 	}
 }
 
@@ -177,18 +206,19 @@ void ofApp::processOpenFileSelection(ofFileDialogResult openFileResult) {
 	 So, You have to develop some error handling code that can detect whether coordinate is out of screen size.
 	*/
 	int idx = 0;
+	int count = 0;
+	int mode;
 
 	// Read file line by line
 	for (ofBuffer::Line it = buffer.getLines().begin(), end = buffer.getLines().end(); it != end; ++it) {
 		string line = *it;
-
+		break_flag = 0;
 		// Split line into strings
 		vector<string> words = ofSplitString(line, " ");
 
 		if (words.size() == 1) {
 			if (input_type == 0) { // Input for the number of lines.
 				num_of_line = atoi(words[0].c_str());
-				cout << "The number of line is: " << num_of_line << endl;
 				if (!lineseg)
 				{
 					lineseg = (Line*)malloc(sizeof(Line)*num_of_line);
@@ -196,7 +226,6 @@ void ofApp::processOpenFileSelection(ofFileDialogResult openFileResult) {
 			}
 			else { // Input for the number of dots.
 				num_of_dot = atoi(words[0].c_str());
-				cout << "The number of dot is: " << num_of_dot << endl;
 				if (!dot)
 				{
 					dot = (Dot*)malloc(sizeof(Dot)*num_of_dot);
@@ -204,34 +233,89 @@ void ofApp::processOpenFileSelection(ofFileDialogResult openFileResult) {
 			}
 		}
 		else if (words.size() >= 2) {
+			count++;
 			if (input_type == 0) { // Input for actual information of lines
-				lineseg[idx].x1 = atoi(words[0].c_str());
-				lineseg[idx].y1 = atoi(words[1].c_str());
-				lineseg[idx].x2 = atoi(words[2].c_str());
-				lineseg[idx].y2 = atoi(words[3].c_str());
+				for (int i = 0; i < 4; i++)
+				{
+					if (i % 2 == 0) // x ÁÂÇ¥
+					{
+						mode = 0;
+					}
+					else
+					{
+						mode = 1;
+					}
+					if(!isOnScreen(mode, atoi(words[i].c_str())))
+					{
+						break_flag = 1;
+						break;
+					}
+				}
 
-				idx++;
-				if (idx >= num_of_line)
+				if (!break_flag)
+				{
+					lineseg[idx].x1 = atoi(words[0].c_str());
+					lineseg[idx].y1 = atoi(words[1].c_str());
+					lineseg[idx].x2 = atoi(words[2].c_str());
+					lineseg[idx].y2 = atoi(words[3].c_str());
+					idx++;
+				}
+				if (num_of_line == count)
 				{
 					input_type = 1;
+					if (idx != num_of_line)
+					{
+						num_of_line = idx;
+						lineseg = (Line*)realloc(lineseg, sizeof(Line)*num_of_line);
+					}
 					idx = 0;
+					count = 0;
 				}
 			}
 			else { // Input for actual information of dots.
-				dot[idx].x1 = atoi(words[0].c_str());
-				dot[idx].y1 = atoi(words[1].c_str());
-
-				idx++;
-				if (idx >= num_of_dot)
+				for (int i = 0; i < 2; i++)
+				{
+					if (i % 2 == 0) // x ÁÂÇ¥
+					{
+						mode = 0;
+					}
+					else
+					{
+						mode = 1;
+					}
+					if (!isOnScreen(mode, atoi(words[i].c_str())))
+					{
+						break_flag = 1;
+						break;
+					}
+				}
+				if (!break_flag)
+				{
+					dot[idx].x1 = atoi(words[0].c_str());
+					dot[idx].y1 = atoi(words[1].c_str());
+					idx++;
+				}
+				
+				if (count == num_of_dot)
 				{
 					input_type = 0;
+					if (idx != num_of_dot)
+					{
+						num_of_dot = idx;
+						dot = (Dot*)realloc(dot, sizeof(Dot)*num_of_dot);
+					}
 					idx = 0;
 				}
 			}
 		} // End of else if.
+		
 	} // End of for-loop (Read file line by line).
+	cout << "The number of line is: " << num_of_line << endl;
+	cout << "The number of dot is: " << num_of_dot << endl;
 
+	sortDot(dot);
 	//debug print
+	
 	for (int i = 0; i < num_of_line; i++)
 	{
 		printf("%d %d %d %d\n", lineseg[i].x1, lineseg[i].y1, lineseg[i].x2, lineseg[i].y2);
@@ -240,6 +324,7 @@ void ofApp::processOpenFileSelection(ofFileDialogResult openFileResult) {
 	{
 		printf("%d %d\n", dot[i].x1, dot[i].y1);
 	}
+	dot_index = 0;
 	//initializeWaterLines();
 }
 
@@ -247,4 +332,40 @@ void ofApp::initializeWaterLines() {
 	
 }
 
+void ofApp::sortDot(Dot* dot) {
+	for (int i = 0; i < num_of_dot-1; i++)
+	{
+		for (int j = 0; j < num_of_dot - i - 1; j++)
+		{
+			if (dot[j].x1 > dot[j + 1].x1)
+			{
+				swapDot(dot, j);
+			}
+		}
+	}
+	return;
+}
 
+void ofApp::swapDot(Dot* dot, int n)
+{
+	int x = dot[n].x1;
+	int y = dot[n].y1;
+	dot[n].x1 = dot[n + 1].x1;
+	dot[n].y1 = dot[n + 1].y1;
+	dot[n + 1].x1 = x;
+	dot[n + 1].y1 = y;
+	return;
+}
+
+int ofApp::isOnScreen(int mode, int data)
+{
+	if (mode == 0) // x ÁÂÇ¥
+	{
+		if (data > 1024 || data < 0) return 0;
+	}
+	else // yÁÂÇ¥
+	{
+		if (data > 728 || data < 0) return 0;
+	}
+	return 1;
+}
